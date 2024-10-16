@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PMTiles.NET", "src/PMTiles.NET.csproj", "{971F1D37-444A-406F-8C0F-C449F9F8E578}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PMTiles.NET", "src\PMTiles.NET.csproj", "{971F1D37-444A-406F-8C0F-C449F9F8E578}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "Test\Test.csproj", "{DACFD736-349E-433F-8F80-6F81DBA1A91B}"
 	ProjectSection(ProjectDependencies) = postProject
