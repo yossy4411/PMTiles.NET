@@ -11,7 +11,7 @@ This library is a port of the [PMTiles](https://github.com/protomaps/PMTiles) (J
 ```csharp
 using PMTiles;
 
-var pmTiles = new PMTilesReader("path/to/file.pmtiles");
+var pmTiles = PMTilesReader.FromFile("path/to/file.pmtiles");
 
 var metadata = pmTiles.Metadata;
 Console.WriteLine(metadata.Name);
