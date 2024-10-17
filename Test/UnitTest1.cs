@@ -26,5 +26,6 @@ public class Tests
         var tile = await _reader.GetTileZxy(9, 454, 201);  // Tokyo
         Assert.That(tile, Is.Not.Null);
         Assert.That(tile!, Is.Not.Empty);
+        Console.WriteLine($"Tile size: {tile!.Length} bytes");
     }
 }
