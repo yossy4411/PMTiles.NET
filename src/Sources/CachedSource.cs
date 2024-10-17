@@ -2,10 +2,7 @@
 
 public class CachedSource(Stream stream) : Source(stream), IDisposable, IAsyncDisposable
 {
-    public const int HeaderSize = 127;
-    
-    private Header? _header;
-    private TileEntry[]? _rootDirectory;
+    private Dictionary<MemoryPosition, TileEntry[]> _cache = new();
     
     public bool IsDisposed { get; private set; }
     
@@ -22,35 +19,47 @@ public class CachedSource(Stream stream) : Source(stream), IDisposable, IAsyncDi
         IsDisposed = true;
         GC.SuppressFinalize(this);
     }
-    
+
     public override async Task<(Header, TileEntry[])> GetHeaderAndRoot(string? etag = null)
     {
         // Read header (0-16384 bytes)
-        if (_header != null && _rootDirectory != null)
+        var memPos = new MemoryPosition(0, 16384);
+        if (_cache.TryGetValue(memPos, out var entries) && Header is not null)
         {
-            return (_header, _rootDirectory);
+            return (Header, entries);
         }
-        var buffer = new Memory<byte>(new byte[16384], 0, 16384);
-        var read = await Stream.ReadAsync(buffer);
-        if (read == 0)
-        {
-            throw new Exception("Failed to read header");
-        }
-        
+        var buffer = await GetTileData(Stream, memPos);
+
         var headerData = buffer[..HeaderSize];
         var header = BytesToHeader(headerData, etag);
         
+        Header = header;
+        
         // Read RootDir
         var rootDirectoryData = buffer[(int)header.RootDirectoryOffset..(int)(header.RootDirectoryOffset + header.RootDirectoryLength)];
-        var rootDirectory = await RootDirectory(rootDirectoryData, header);
-        
-        _header = header;
-        _rootDirectory = rootDirectory;
-        
-        return (header, _rootDirectory);
+        var rootDirectory = await BytesToDirectory(rootDirectoryData, header);
+        _cache[new MemoryPosition(header.RootDirectoryOffset, header.RootDirectoryLength)] = rootDirectory;
+        return (header, rootDirectory);
     }
 
-    internal override Header BytesToHeader(Memory<byte> buffer, string? etag = null)
+    protected override async Task<TileEntry[]> GetTileEntries(MemoryPosition position)
+    {
+        if (Header is null)
+        {
+            throw new InvalidOperationException("Header is not set");
+        }
+        if (_cache.TryGetValue(position, out var entries))
+        {
+            return entries;
+        }
+        
+        var buffer = await GetTileData(Stream, position);
+        var tileEntries = await BytesToDirectory(buffer, Header);
+        _cache[position] = tileEntries;
+        return tileEntries;
+    }
+
+    private protected override Header BytesToHeader(Memory<byte> buffer, string? etag = null)
     {
         using var stream = PMTilesHelper.CreateBinaryReader(buffer);
         using var reader = new BinaryReader(stream);
@@ -97,7 +106,7 @@ public class CachedSource(Stream stream) : Source(stream), IDisposable, IAsyncDi
         };
     }
     
-    private static async Task<TileEntry[]> RootDirectory(Memory<byte> buffer, Header header)
+    private protected override async Task<TileEntry[]> BytesToDirectory(Memory<byte> buffer, Header header)
     {
         using var memoryStream = PMTilesHelper.CreateBinaryReader(buffer);
         await using var stream = PMTilesHelper.Decompress(memoryStream, header.InternalCompression);
@@ -121,7 +130,6 @@ public class CachedSource(Stream stream) : Source(stream), IDisposable, IAsyncDi
         {
             tileEntries[i].RunLength = stream.ReadVarint();
         }
-        
         for (ulong i = 0; i < entries; i++)
         {
             tileEntries[i].Length = stream.ReadVarint();

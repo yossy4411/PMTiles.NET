@@ -4,7 +4,7 @@ namespace PMTiles;
 
 public class PMTilesReader(Source source)
 {
-    private Source? Source { get; set; }
+    private Source? Source { get; set; } = source;
 
     public static async Task<PMTilesReader?> FromUrl(string url)
     {
@@ -38,5 +38,14 @@ public class PMTilesReader(Source source)
 
         var (header, _) = await Source.GetHeaderAndRoot();
         return header;
+    }
+
+    public async Task<byte[]?> GetTileZxy(int z, int x, int y)
+    {
+        if (Source == null)
+        {
+            throw new InvalidOperationException("Source is not set");
+        }
+        return await Source.GetTile(PMTilesHelper.ZxyToTileId(z, x, y));
     }
 }

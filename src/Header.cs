@@ -15,21 +15,21 @@ public class Header
     internal ulong TileDataOffset { get; init; }
     internal ulong TileDataLength { get; init; }
     internal ulong NumAddressedTiles { get; init; }
-    internal ulong NumTileEntries { get; init; }
-    internal ulong NumTileContents { get; init; }
+    public ulong NumTileEntries { get; init; }
+    public ulong NumTileContents { get; init; }
     internal bool Clustered { get; init; }
-    internal Compression InternalCompression { get; init; }
-    internal Compression TileCompression { get; init; }
-    internal TileType TileType { get; init; }
-    internal byte MinZoom { get; init; }
-    internal byte MaxZoom { get; init; }
-    internal double MinLon { get; init; }
-    internal double MinLat { get; init; }
-    internal double MaxLon { get; init; }
-    internal double MaxLat { get; init; }
-    internal byte CenterZoom { get; init; }
-    internal double CenterLon { get; init; }
-    internal double CenterLat { get; init; }
+    public Compression InternalCompression { get; init; }
+    public Compression TileCompression { get; init; }
+    public TileType TileType { get; init; }
+    public byte MinZoom { get; init; }
+    public byte MaxZoom { get; init; }
+    public double MinLon { get; init; }
+    public double MinLat { get; init; }
+    public double MaxLon { get; init; }
+    public double MaxLat { get; init; }
+    public byte CenterZoom { get; init; }
+    public double CenterLon { get; init; }
+    public double CenterLat { get; init; }
     internal string? Etag { get; init; }
 }
 
