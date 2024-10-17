@@ -3,39 +3,148 @@
 /// <summary>
 /// Represents a PMTiles source.
 /// </summary>
-/// <param name="stream">The stream to read from.</param>
-public abstract class Source(Stream stream)
+public abstract class Source
 {
-    protected const int HeaderSize = 127;
-    protected Stream Stream { get; } = stream;
+    private const int HeaderSize = 127;
+
+    private Header? _header;
     
-    protected Header? Header;
-    
+    private Dictionary<MemoryPosition, TileEntry[]> _cache = new();
+
     /// <summary>
     /// Gets the header and root directory.
     /// </summary>
     /// <param name="etag">The ETag to use for caching.</param>
     /// <returns>A tuple containing the header and root directory.</returns>
-    public abstract Task<(Header, TileEntry[])> GetHeaderAndRoot(string? etag = null);
-
-
-    private protected static async Task<Memory<byte>> GetTileData(Stream stream, MemoryPosition position)
+    public async Task<(Header, TileEntry[])> GetHeaderAndRoot(string? etag = null)
     {
-        var buffer = new Memory<byte>(new byte[position.Length]);
-        stream.Seek((long)position.Offset, SeekOrigin.Begin);
-        var read = await stream.ReadAsync(buffer);
-        if (read == 0)
+        // Read header (0-16384 bytes)
+        var memPos = new MemoryPosition(0, 16384);
+        if (_cache.TryGetValue(memPos, out var entries) && _header is not null)
         {
-            throw new Exception("Failed to read tile data");
+            return (_header, entries);
         }
-        return buffer;
+        var buffer = await GetTileData(memPos);
+
+        var headerData = buffer[..HeaderSize];
+        var header = BytesToHeader(headerData, etag);
+        
+        _header = header;
+        
+        // Read RootDir
+        var rootDirectoryData = buffer[(int)header.RootDirectoryOffset..(int)(header.RootDirectoryOffset + header.RootDirectoryLength)];
+        var rootDirectory = await BytesToDirectory(rootDirectoryData, header);
+        _cache[new MemoryPosition(header.RootDirectoryOffset, header.RootDirectoryLength)] = rootDirectory;
+        return (header, rootDirectory);
     }
-    
-    private protected abstract Header BytesToHeader(Memory<byte> buffer, string? etag = null);
-    
-    private protected abstract Task<TileEntry[]> BytesToDirectory(Memory<byte> buffer, Header header);
-    
-    protected abstract Task<TileEntry[]> GetTileEntries(MemoryPosition position);
+
+
+    protected abstract Task<Memory<byte>> GetTileData(MemoryPosition position);
+
+    private static Header BytesToHeader(Memory<byte> buffer, string? etag = null)
+    {
+        using var stream = PMTilesHelper.CreateBinaryReader(buffer);
+        using var reader = new BinaryReader(stream);
+        reader.BaseStream.Seek(0, SeekOrigin.Begin);
+        if (reader.ReadUInt16() != 0x4D50) // "PM"
+        {
+            throw new Exception("Wrong magic number");
+        }
+        reader.BaseStream.Seek(7, SeekOrigin.Begin);
+        var specVersion = reader.ReadByte(); // uint8
+        if (specVersion > 3)
+        {
+            throw new Exception($"Archive is spec version {specVersion} but this library only supports up to 3");
+        }
+
+        return new Header
+        {
+            SpecVersion = specVersion,
+            RootDirectoryOffset = reader.ReadUInt64(), // at 8
+            RootDirectoryLength = reader.ReadUInt64(), // at 16
+            JsonMetadataOffset = reader.ReadUInt64(), // at 24
+            JsonMetadataLength = reader.ReadUInt64(), // at 32
+            LeafDirectoryOffset = reader.ReadUInt64(), // at 40
+            LeafDirectoryLength = reader.ReadUInt64(), // at 48
+            TileDataOffset = reader.ReadUInt64(), // at 56
+            TileDataLength = reader.ReadUInt64(), // at 64
+            NumAddressedTiles = reader.ReadUInt64(), // at 72
+            NumTileEntries = reader.ReadUInt64(), // at 80
+            NumTileContents = reader.ReadUInt64(), // at 88
+            Clustered = reader.ReadByte() == 1, // at 96
+            InternalCompression = (Compression)reader.ReadByte(), // at 97
+            TileCompression = (Compression)reader.ReadByte(), // at 98
+            TileType = (TileType)reader.ReadByte(), // at 99
+            MinZoom = reader.ReadByte(), // at 100
+            MaxZoom = reader.ReadByte(), // at 101
+            MinLon = reader.ReadInt32() / 1e7, // at 102
+            MinLat = reader.ReadInt32() / 1e7, // at 106
+            MaxLon = reader.ReadInt32() / 1e7, // at 110
+            MaxLat = reader.ReadInt32() / 1e7, // at 114
+            CenterZoom = reader.ReadByte(), // at 118
+            CenterLon = reader.ReadInt32() / 1e7, // at 119
+            CenterLat = reader.ReadInt32() / 1e7, // at 123
+            Etag = etag
+        };
+    }
+
+    private static async Task<TileEntry[]> BytesToDirectory(Memory<byte> buffer, Header header)
+    {
+        using var memoryStream = PMTilesHelper.CreateBinaryReader(buffer);
+        await using var stream = PMTilesHelper.Decompress(memoryStream, header.InternalCompression);
+        var entries = stream.ReadVarint();
+        var tileEntries = new TileEntry[entries];
+        
+        ulong lastId = 0;
+        for (ulong i = 0; i < entries; i++)
+        {
+            var value = stream.ReadVarint();
+            lastId += value;
+            tileEntries[i] = new TileEntry
+            {
+                TileId = lastId,
+                Offset = 0,
+                Length = 0
+            };
+        }
+
+        for (ulong i = 0; i < entries; i++)
+        {
+            tileEntries[i].RunLength = stream.ReadVarint();
+        }
+        for (ulong i = 0; i < entries; i++)
+        {
+            tileEntries[i].Length = stream.ReadVarint();
+        }
+        
+        for (ulong i = 0; i < entries; i++) {
+            var value = stream.ReadVarint();
+            if (value == 0 && i > 0) {
+                tileEntries[i].Offset = tileEntries[i - 1].Offset + tileEntries[i - 1].Length;
+            } else {
+                tileEntries[i].Offset = value - 1;
+            }
+        }
+
+        return tileEntries;
+    }
+
+    private async Task<TileEntry[]> GetTileEntries(MemoryPosition position)
+    {
+        if (_header is null)
+        {
+            throw new InvalidOperationException("Header is not set");
+        }
+        if (_cache.TryGetValue(position, out var entries))
+        {
+            return entries;
+        }
+        
+        var buffer = await GetTileData(position);
+        var tileEntries = await BytesToDirectory(buffer, _header);
+        _cache[position] = tileEntries;
+        return tileEntries;
+    }
 
     private static TileEntry? FindTile(TileEntry[] entries, long tileId) {
         var m = 0L;
@@ -66,10 +175,10 @@ public abstract class Source(Stream stream)
     }
     
     public async Task<byte[]?> GetTile(long tileId) {
-        if (Header is null) {
+        if (_header is null) {
             throw new InvalidOperationException("Header is not set");
         }
-        var pos = new MemoryPosition(Header.RootDirectoryOffset, Header.RootDirectoryLength);
+        var pos = new MemoryPosition(_header.RootDirectoryOffset, _header.RootDirectoryLength);
         for (var i = 0; i < 3; i++)
         {
             var entries = await GetTileEntries(pos);
@@ -80,9 +189,9 @@ public abstract class Source(Stream stream)
 
             if (entry.RunLength > 0)
             {
-                pos = new MemoryPosition(Header.TileDataOffset + entry.Offset, entry.Length);
-                var mem = await GetTileData(Stream, pos);
-                await using var decompress = PMTilesHelper.Decompress(PMTilesHelper.CreateBinaryReader(mem), Header.TileCompression);
+                pos = new MemoryPosition(_header.TileDataOffset + entry.Offset, entry.Length);
+                var mem = await GetTileData(pos);
+                await using var decompress = PMTilesHelper.Decompress(PMTilesHelper.CreateBinaryReader(mem), _header.TileCompression);
                 using var memStream = new MemoryStream();
                 await decompress.CopyToAsync(memStream);
                 var data = memStream.ToArray();
@@ -90,7 +199,7 @@ public abstract class Source(Stream stream)
             }
             
             // if RunLength is 0, it means the entry describes the leaf directory we need to read next
-            pos = new MemoryPosition(Header.LeafDirectoryOffset + entry.Offset, entry.Length);
+            pos = new MemoryPosition(_header.LeafDirectoryOffset + entry.Offset, entry.Length);
         }
         // not found
         return null;
