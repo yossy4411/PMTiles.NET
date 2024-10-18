@@ -2,9 +2,14 @@
 
 namespace PMTiles;
 
-public class PMTilesReader(Source source)
+public class PMTilesReader
 {
-    private Source? Source { get; set; } = source;
+    private Source? Source { get; set; }
+    
+    public PMTilesReader(Source source)
+    {
+        Source = source;
+    }
 
     public static async Task<PMTilesReader?> FromUrl(string url)
     {

@@ -1,10 +1,15 @@
 ﻿namespace PMTiles.Sources;
 
-public class StreamSource(Stream stream) : Source, IDisposable, IAsyncDisposable
+public class StreamSource : Source, IDisposable, IAsyncDisposable
 {
     public bool IsDisposed { get; private set; }
     
     private Stream Stream { get; }
+    
+    public StreamSource(Stream stream)
+    {
+        Stream = stream;
+    }
     
     public void Dispose()
     {

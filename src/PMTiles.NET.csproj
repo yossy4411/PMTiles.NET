@@ -1,10 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <RootNamespace>PMTiles</RootNamespace>
+        <TargetFrameworks>net8.0;net6.0;net7.0</TargetFrameworks>
+        <Version>0.1.0</Version>
+        <Title>PMTiles.NET</Title>
+        <Authors>yossy4411</Authors>
+        <Description>A simple library for reading pmtiles.</Description>
+        <Copyright>Copyright (c) 2024 Okayu Group</Copyright>
+        <PackageLicenseUrl>https://github.com/yossy4411/PMTiles.NET/blob/master/LICENSE</PackageLicenseUrl>
+        <RepositoryType>GitHub</RepositoryType>
+        <PackageTags></PackageTags>
+        <RepositoryUrl>https://github.com/yossy4411/PMTiles.NET</RepositoryUrl>
     </PropertyGroup>
 
 </Project>

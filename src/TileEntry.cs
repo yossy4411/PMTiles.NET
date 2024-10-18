@@ -10,10 +10,16 @@ public class TileEntry
     public ulong RunLength { get; internal set; }
 }
 
-public readonly struct MemoryPosition(ulong offset, ulong length) : IEquatable<MemoryPosition>
+public readonly struct MemoryPosition : IEquatable<MemoryPosition>
 {
-    public ulong Offset { get; init; } = offset;
-    public ulong Length { get; init; } = length;
+    public MemoryPosition(ulong offset, ulong length)
+    {
+        Offset = offset;
+        Length = length;
+    }
+
+    public ulong Offset { get; init; }
+    public ulong Length { get; init; }
     
     public void Deconstruct(out ulong offset, out ulong length) => (offset, length) = (Offset, Length);
 
