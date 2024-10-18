@@ -29,12 +29,23 @@ public class PMTilesReader(Source source)
         return header;
     }
 
-    public async Task<byte[]?> GetTileZxy(int z, int x, int y)
+    public async Task<Stream?> GetTileZxy(int z, int x, int y)
     {
         if (Source == null)
         {
             throw new InvalidOperationException("Source is not set");
         }
         return await Source.GetTile(PMTilesHelper.ZxyToTileId(z, x, y));
+    }
+    
+    public async Task<byte[]?> GetTileZxyAsBytes(int z, int x, int y)
+    {
+        var stream = await GetTileZxy(z, x, y);
+        if (stream is null) {
+            return null;
+        }
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        return ms.ToArray();
     }
 }

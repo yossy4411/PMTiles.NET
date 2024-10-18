@@ -175,11 +175,11 @@ public abstract class Source
         return tileId - (long)entries[n].TileId >= (long)entries[n].RunLength ? null : entries[n];
     }
     
-    public async Task<byte[]?> GetTile(long tileId) {
+    public async Task<Stream?> GetTile(long tileId) {
         if (_header is null) {
-            throw new InvalidOperationException("Header is not set");
+            _ = await GetHeaderAndRoot(); // cache header
         }
-        var pos = new MemoryPosition(_header.RootDirectoryOffset, _header.RootDirectoryLength);
+        var pos = new MemoryPosition(_header!.RootDirectoryOffset, _header.RootDirectoryLength);
         for (var i = 0; i < 3; i++)
         {
             var entries = await GetTileEntries(pos);
@@ -192,11 +192,8 @@ public abstract class Source
             {
                 pos = new MemoryPosition(_header.TileDataOffset + entry.Offset, entry.Length);
                 var mem = await GetTileData(pos);
-                await using var decompress = PMTilesHelper.Decompress(PMTilesHelper.CreateBinaryReader(mem), _header.TileCompression);
-                using var memStream = new MemoryStream();
-                await decompress.CopyToAsync(memStream);
-                var data = memStream.ToArray();
-                return data;
+                var decompress = PMTilesHelper.Decompress(PMTilesHelper.CreateBinaryReader(mem), _header.TileCompression);
+                return decompress;
             }
             
             // if RunLength is 0, it means the entry describes the leaf directory we need to read next
