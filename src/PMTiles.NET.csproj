@@ -10,10 +10,14 @@
         <Authors>yossy4411</Authors>
         <Description>A simple library for reading pmtiles.</Description>
         <Copyright>Copyright (c) 2024 Okayu Group</Copyright>
-        <PackageLicenseUrl>https://github.com/yossy4411/PMTiles.NET/blob/master/LICENSE</PackageLicenseUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
         <RepositoryType>GitHub</RepositoryType>
-        <PackageTags></PackageTags>
         <RepositoryUrl>https://github.com/yossy4411/PMTiles.NET</RepositoryUrl>
     </PropertyGroup>
+    
+    <ItemGroup>
+        <None Include="../README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
 
 </Project>
