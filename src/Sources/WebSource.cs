@@ -6,22 +6,28 @@ public class WebSource : Source, IDisposable
 {
     private HttpClient Client { get; } = new();
     
-    public bool IsDisposed { get; private set; }
-    
-    private string _url;
+    private readonly string _url;
     
     public WebSource(string url)
     {
         _url = url;
     }
-    
-    public void Dispose()
+
+    protected override void Dispose(bool disposing)
     {
-        Client.Dispose();
-        IsDisposed = true;
-        GC.SuppressFinalize(this);
+        if (disposing)
+        {
+            Client.Dispose();
+        }
+        base.Dispose(disposing);
     }
     
+    protected override ValueTask DisposeAsyncCore()
+    {
+        Client.Dispose();
+        return base.DisposeAsyncCore();
+    }
+
     public async Task<bool> IsAvailable()
     {
         var request = new HttpRequestMessage(HttpMethod.Head, _url);

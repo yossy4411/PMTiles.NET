@@ -2,13 +2,28 @@
 
 namespace PMTiles;
 
-public class PMTilesReader
+public class PMTilesReader : IDisposable, IAsyncDisposable
 {
     private Source? Source { get; set; }
     
     public PMTilesReader(Source source)
     {
         Source = source;
+    }
+    
+    public void Dispose()
+    {
+        Source?.Dispose();
+        GC.SuppressFinalize(this);
+    }
+    
+    public async ValueTask DisposeAsync()
+    {
+        if (Source is not null)
+        {
+            await Source.DisposeAsync();
+        }
+        GC.SuppressFinalize(this);
     }
 
     public static async Task<PMTilesReader?> FromUrl(string url)

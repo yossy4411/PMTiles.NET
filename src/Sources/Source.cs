@@ -3,13 +3,44 @@
 /// <summary>
 /// Represents a PMTiles source.
 /// </summary>
-public abstract class Source
+public abstract class Source : IDisposable, IAsyncDisposable
 {
     private const int HeaderSize = 127;
 
     private Header? _header;
     
     private Dictionary<MemoryPosition, TileEntry[]> _cache = new();
+    
+    private bool _disposed;
+    
+    public void Dispose()
+    {
+        if (_disposed) return;
+        Dispose(disposing: true);
+        _disposed = true;
+        GC.SuppressFinalize(this);
+    }
+    
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _cache.Clear();
+        }
+    }
+    
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed) return;
+        await DisposeAsyncCore();
+        Dispose(disposing: false);
+        GC.SuppressFinalize(this);
+    }
+    
+    protected virtual ValueTask DisposeAsyncCore()
+    {
+        return default;
+    }
 
     /// <summary>
     /// Gets the header and root directory and caches it.

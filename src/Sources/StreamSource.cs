@@ -1,9 +1,7 @@
 ﻿namespace PMTiles.Sources;
 
-public class StreamSource : Source, IDisposable, IAsyncDisposable
+public class StreamSource : Source
 {
-    public bool IsDisposed { get; private set; }
-    
     private Stream Stream { get; }
     
     public StreamSource(Stream stream)
@@ -11,18 +9,18 @@ public class StreamSource : Source, IDisposable, IAsyncDisposable
         Stream = stream;
     }
     
-    public void Dispose()
+    protected override void Dispose(bool disposing)
     {
-        Stream.Dispose();
-        IsDisposed = true;
-        GC.SuppressFinalize(this);
+        if (disposing)
+        {
+            Stream.Dispose();
+        }
+        base.Dispose(disposing);
     }
     
-    public async ValueTask DisposeAsync()
+    protected override async ValueTask DisposeAsyncCore()
     {
         await Stream.DisposeAsync();
-        IsDisposed = true;
-        GC.SuppressFinalize(this);
     }
 
     protected override async Task<Memory<byte>> GetTileData(MemoryPosition position)
