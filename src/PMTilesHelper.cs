@@ -6,7 +6,7 @@ namespace PMTiles;
 /// <summary>
 /// A helper class for PMTiles
 /// </summary>
-internal static class PMTilesHelper
+public static class PMTilesHelper
 {
     public const int HeaderSize = 127;
     

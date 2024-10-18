@@ -12,19 +12,21 @@ public abstract class Source
     private Dictionary<MemoryPosition, TileEntry[]> _cache = new();
 
     /// <summary>
-    /// Gets the header and root directory.
+    /// Gets the header and root directory and caches it.
     /// </summary>
     /// <param name="etag">The ETag to use for caching.</param>
     /// <returns>A tuple containing the header and root directory.</returns>
-    public async Task<(Header, TileEntry[])> GetHeaderAndRoot(string? etag = null)
+    public async ValueTask<(Header, TileEntry[])> GetHeaderAndRoot(string? etag = null)
     {
-        // Read header (0-16384 bytes)
-        var memPos = new MemoryPosition(0, 16384);
-        if (_cache.TryGetValue(memPos, out var entries) && _header is not null)
+        if (_header is not null)
         {
-            return (_header, entries);
+            var root = new MemoryPosition(_header.RootDirectoryOffset, _header.RootDirectoryLength);
+            if (_header.Etag == etag && _cache.TryGetValue(root, out var entries))
+            {
+                return (_header, entries);
+            }
         }
-        var buffer = await GetTileData(memPos);
+        var buffer = await GetTileData(new MemoryPosition(0, 16384));  // Header + RootDir
 
         var headerData = buffer[..HeaderSize];
         var header = BytesToHeader(headerData, etag);
@@ -37,7 +39,6 @@ public abstract class Source
         _cache[new MemoryPosition(header.RootDirectoryOffset, header.RootDirectoryLength)] = rootDirectory;
         return (header, rootDirectory);
     }
-
 
     protected abstract Task<Memory<byte>> GetTileData(MemoryPosition position);
 
@@ -129,7 +130,7 @@ public abstract class Source
         return tileEntries;
     }
 
-    private async Task<TileEntry[]> GetTileEntries(MemoryPosition position)
+    private async ValueTask<TileEntry[]> GetTileEntries(MemoryPosition position)
     {
         if (_header is null)
         {

@@ -18,7 +18,7 @@ public class PMTilesReader(Source source)
         return File.Exists(path) ? new PMTilesReader(new StreamSource(File.OpenRead(path))) : null;
     }
 
-    public async Task<Header> GetHeader()
+    public async ValueTask<Header> GetHeader()
     {
         if (Source == null)
         {
