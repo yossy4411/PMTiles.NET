@@ -84,4 +84,12 @@ public class Tests
     
     // todo: Add more tests and implements e.g. Writing PMTiles, etc.
     
+    [TearDown]
+    public async ValueTask TearDown()
+    {
+        if (_reader is not null)
+        {
+            await _reader.DisposeAsync();
+        }
+    }
 }
