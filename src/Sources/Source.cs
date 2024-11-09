@@ -66,6 +66,11 @@ public abstract class Source : IDisposable, IAsyncDisposable
         }
         var buffer = await GetTileData(new MemoryPosition(0, 16384));  // Header + RootDir
 
+        if (buffer.Length < HeaderSize)
+        {
+            throw new Exception("Cannot read header");
+        }
+        
         var headerData = buffer[..HeaderSize];
         var header = BytesToHeader(headerData, etag);
         
