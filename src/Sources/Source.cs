@@ -1,4 +1,6 @@
-﻿namespace PMTiles.Sources;
+﻿using System.Collections.Concurrent;
+
+namespace PMTiles.Sources;
 
 /// <summary>
 /// Represents a PMTiles source.
@@ -9,7 +11,7 @@ public abstract class Source : IDisposable, IAsyncDisposable
 
     private Header? _header;
     
-    private Dictionary<MemoryPosition, TileEntry[]> _cache = new();
+    private readonly ConcurrentDictionary<MemoryPosition, TileEntry[]> _cache = new();
     
     private bool _disposed;
     
