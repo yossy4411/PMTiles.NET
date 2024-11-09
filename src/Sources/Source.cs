@@ -37,6 +37,11 @@ public abstract class Source : IDisposable, IAsyncDisposable
         GC.SuppressFinalize(this);
     }
     
+    ~Source()
+    {
+        Dispose(disposing: false);
+    }
+    
     protected virtual ValueTask DisposeAsyncCore()
     {
         return default;
