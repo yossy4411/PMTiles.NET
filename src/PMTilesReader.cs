@@ -26,10 +26,17 @@ public class PMTilesReader : IDisposable, IAsyncDisposable
         GC.SuppressFinalize(this);
     }
 
-    public static async Task<PMTilesReader?> FromUrl(string url)
+    public static async Task<PMTilesReader?> FromUrlAsync(string url)
     {
         var webSource = new WebSource(url);
-        var available = await webSource.IsAvailable();
+        var available = await webSource.IsAvailableAsync();
+        return available ? new PMTilesReader(webSource) : null;
+    }
+    
+    public static PMTilesReader? FromUrl(string url)
+    {
+        var webSource = new WebSource(url);
+        var available = webSource.IsAvailable();
         return available ? new PMTilesReader(webSource) : null;
     }
 
@@ -38,7 +45,7 @@ public class PMTilesReader : IDisposable, IAsyncDisposable
         return File.Exists(path) ? new PMTilesReader(new StreamSource(File.OpenRead(path))) : null;
     }
 
-    public async ValueTask<Header> GetHeader()
+    public async ValueTask<Header> GetHeaderAsync()
     {
         if (Source == null)
         {
@@ -47,6 +54,16 @@ public class PMTilesReader : IDisposable, IAsyncDisposable
 
         var (header, _) = await Source.GetHeaderAndRoot();
         return header;
+    }
+    
+    public Header GetHeader()
+    {
+        if (Source == null)
+        {
+            throw new InvalidOperationException("Source is not set");
+        }
+
+        return Source.GetHeaderSync();
     }
 
     public async Task<Stream?> GetTileZxy(int z, int x, int y)

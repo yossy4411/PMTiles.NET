@@ -2,7 +2,7 @@
 
 namespace PMTiles.Sources;
 
-public class WebSource : Source, IDisposable
+public class WebSource : Source
 {
     private HttpClient Client { get; } = new();
     
@@ -28,19 +28,45 @@ public class WebSource : Source, IDisposable
         return base.DisposeAsyncCore();
     }
 
-    public async Task<bool> IsAvailable()
+    public async Task<bool> IsAvailableAsync()
     {
         var request = new HttpRequestMessage(HttpMethod.Head, _url);
         var response = await Client.SendAsync(request);
         return response.IsSuccessStatusCode;
     }
     
-    protected override async Task<Memory<byte>> GetTileData(MemoryPosition position)
+    public bool IsAvailable()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Head, _url);
+        var response = Client.Send(request);
+        return response.IsSuccessStatusCode;
+    }
+    
+    protected override async Task<Memory<byte>> GetTileDataAsync(MemoryPosition position)
     {
         Client.DefaultRequestHeaders.Range = new RangeHeaderValue((long)position.Offset, (long)(position.Offset + position.Length - 1));
         var buffer = await Client.GetByteArrayAsync(_url);
         return buffer;
     }
-    
-    
+
+    protected override Memory<byte> GetTileData(MemoryPosition position)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, _url);
+        request.Headers.Range = new RangeHeaderValue((long)position.Offset, (long)(position.Offset + position.Length - 1));
+        
+        var response = Client.Send(request);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException($"Failed to get tile data. Status code: {response.StatusCode}");
+        }
+
+        var stream = response.Content.ReadAsStream();
+        var buffer = new byte[position.Length];
+        var read = stream.Read(buffer, 0, buffer.Length);
+        if (read != buffer.Length)
+        {
+            throw new Exception("Failed to read tile data");
+        }
+        return buffer;
+    }
 }

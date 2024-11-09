@@ -57,7 +57,7 @@ public abstract class Source : IDisposable, IAsyncDisposable
                 return (_header, entries);
             }
         }
-        var buffer = await GetTileData(new MemoryPosition(0, 16384));  // Header + RootDir
+        var buffer = await GetTileDataAsync(new MemoryPosition(0, 16384));  // Header + RootDir
 
         var headerData = buffer[..HeaderSize];
         var header = BytesToHeader(headerData, etag);
@@ -70,8 +70,29 @@ public abstract class Source : IDisposable, IAsyncDisposable
         _cache[new MemoryPosition(header.RootDirectoryOffset, header.RootDirectoryLength)] = rootDirectory;
         return (header, rootDirectory);
     }
+    
+    public Header GetHeaderSync(string? etag = null)
+    {
+        if (_header is not null)
+        {
+            return _header;
+        }
+        var buffer = GetTileData(new MemoryPosition(0, 16384));  // Header + RootDir
 
-    protected abstract Task<Memory<byte>> GetTileData(MemoryPosition position);
+        if (buffer.Length < HeaderSize)
+        {
+            throw new Exception("Cannot read header");
+        }
+        
+        var headerData = buffer[..HeaderSize];
+        var header = BytesToHeader(headerData, etag);
+        
+        return _header = header;
+    }
+
+    protected abstract Task<Memory<byte>> GetTileDataAsync(MemoryPosition position);
+    
+    protected abstract Memory<byte> GetTileData(MemoryPosition position);
 
     private static Header BytesToHeader(Memory<byte> buffer, string? etag = null)
     {
@@ -172,7 +193,7 @@ public abstract class Source : IDisposable, IAsyncDisposable
             return entries;
         }
         
-        var buffer = await GetTileData(position);
+        var buffer = await GetTileDataAsync(position);
         var tileEntries = await BytesToDirectory(buffer, _header);
         _cache[position] = tileEntries;
         return tileEntries;
@@ -222,7 +243,7 @@ public abstract class Source : IDisposable, IAsyncDisposable
             if (entry.RunLength > 0)
             {
                 pos = new MemoryPosition(_header.TileDataOffset + entry.Offset, entry.Length);
-                var mem = await GetTileData(pos);
+                var mem = await GetTileDataAsync(pos);
                 var decompress = PMTilesHelper.Decompress(PMTilesHelper.CreateBinaryReader(mem), _header.TileCompression);
                 return decompress;
             }
