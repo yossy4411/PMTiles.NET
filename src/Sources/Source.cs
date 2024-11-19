@@ -1,4 +1,6 @@
-﻿namespace PMTiles.Sources;
+﻿using System.Collections.Concurrent;
+
+namespace PMTiles.Sources;
 
 /// <summary>
 /// Represents a PMTiles source.
@@ -9,7 +11,7 @@ public abstract class Source : IDisposable, IAsyncDisposable
 
     private Header? _header;
     
-    private Dictionary<MemoryPosition, TileEntry[]> _cache = new();
+    private readonly ConcurrentDictionary<MemoryPosition, TileEntry[]> _cache = new();
     
     private bool _disposed;
     
@@ -37,6 +39,11 @@ public abstract class Source : IDisposable, IAsyncDisposable
         GC.SuppressFinalize(this);
     }
     
+    ~Source()
+    {
+        Dispose(disposing: false);
+    }
+    
     protected virtual ValueTask DisposeAsyncCore()
     {
         return default;
@@ -59,6 +66,11 @@ public abstract class Source : IDisposable, IAsyncDisposable
         }
         var buffer = await GetTileDataAsync(new MemoryPosition(0, 16384));  // Header + RootDir
 
+        if (buffer.Length < HeaderSize)
+        {
+            throw new Exception("Cannot read header");
+        }
+        
         var headerData = buffer[..HeaderSize];
         var header = BytesToHeader(headerData, etag);
         
