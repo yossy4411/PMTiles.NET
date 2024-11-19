@@ -37,9 +37,15 @@ public class WebSource : Source, IDisposable
     
     protected override async Task<Memory<byte>> GetTileData(MemoryPosition position)
     {
-        Client.DefaultRequestHeaders.Range = new RangeHeaderValue((long)position.Offset, (long)(position.Offset + position.Length - 1));
-        var buffer = await Client.GetByteArrayAsync(_url);
-        return buffer;
+        var request = new HttpRequestMessage(HttpMethod.Get, _url);
+        request.Headers.Range = new RangeHeaderValue((long)position.Offset, (long)(position.Offset + position.Length - 1));
+        
+        var response = await Client.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException($"Failed to get tile data. Status code: {response.StatusCode}");
+        }
+        return await response.Content.ReadAsByteArrayAsync();
     }
     
     
