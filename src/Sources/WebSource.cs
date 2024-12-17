@@ -37,9 +37,16 @@ public class WebSource : Source
     
     public bool IsAvailable()
     {
-        var request = new HttpRequestMessage(HttpMethod.Head, _url);
-        var response = Client.Send(request);
-        return response.IsSuccessStatusCode;
+        try
+        {
+            var request = new HttpRequestMessage(HttpMethod.Head, _url);
+            var response = Client.Send(request);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
     }
     
     protected override async Task<Memory<byte>> GetTileDataAsync(MemoryPosition position)
