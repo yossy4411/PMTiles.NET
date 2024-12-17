@@ -133,7 +133,7 @@ public class PMTilesReader : IDisposable, IAsyncDisposable
     /// <exception cref="InvalidOperationException">Returns if the source has not been set</exception>
     public async Task<byte[]?> GetTileZxyAsBytesAsync(int z, int x, int y)
     {
-        var stream = await GetTileZxy(z, x, y);
+        var stream = await GetTileZxyAsync(z, x, y);
         if (stream is null) {
             return null;
         }
