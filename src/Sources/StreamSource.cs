@@ -1,9 +1,16 @@
 ﻿namespace PMTiles.Sources;
 
+/// <summary>
+/// A source that fetches tiles from a stream
+/// </summary>
 public class StreamSource : Source
 {
     private Stream Stream { get; }
     
+    /// <summary>
+    /// A source that fetches tiles from a stream
+    /// </summary>
+    /// <param name="stream">Source Stream</param>
     public StreamSource(Stream stream)
     {
         Stream = stream;

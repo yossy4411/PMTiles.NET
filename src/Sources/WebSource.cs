@@ -2,12 +2,19 @@
 
 namespace PMTiles.Sources;
 
+/// <summary>
+/// A source that fetches tiles from the web
+/// </summary>
 public class WebSource : Source
 {
     private HttpClient Client { get; } = new();
     
     private readonly string _url;
     
+    /// <summary>
+    /// A source that fetches tiles from the web
+    /// </summary>
+    /// <param name="url">Source URL</param>
     public WebSource(string url)
     {
         _url = url;
@@ -27,7 +34,11 @@ public class WebSource : Source
         Client.Dispose();
         return base.DisposeAsyncCore();
     }
-
+    
+    /// <summary>
+    /// Checks if the url is correct
+    /// </summary>
+    /// <returns>Return true if the request success</returns>
     public async Task<bool> IsAvailableAsync()
     {
         var request = new HttpRequestMessage(HttpMethod.Head, _url);
@@ -35,6 +46,10 @@ public class WebSource : Source
         return response.IsSuccessStatusCode;
     }
     
+    /// <summary>
+    /// Checks if the url is correct
+    /// </summary>
+    /// <returns>Return true if the request success</returns>
     public bool IsAvailable()
     {
         try
